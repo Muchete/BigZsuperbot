@@ -2,7 +2,7 @@ var minimumValue = 100;
 var repeatingtimePumping = 0.5;
 var daysToLookAhead = 2;
 var repeatingtimeForecast = 1;
-var updateTime = 60; //in minutes
+var updateTime = 30; //in minutes
 var now = new Date();
 
 
