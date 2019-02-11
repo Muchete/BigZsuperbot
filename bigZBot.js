@@ -1,4 +1,4 @@
-var minimumValue = 100;
+var minimumValue = 70;
 var repeatingtimePumping = 0.5;
 var daysToLookAhead = 2;
 var repeatingtimeForecast = 1;
@@ -11,6 +11,7 @@ const fs = require('fs');
 const request = require("request");
 var log = JSON.parse(fs.readFileSync('BigZlog.json', 'utf8'));
 var token = String(fs.readFileSync('token.txt', 'utf8'));
+token = token.slice(0, -1);
 
 const Telegraf = require('telegraf');
 const bot = new Telegraf(token);
@@ -25,8 +26,9 @@ var temperature;
 //BOT STUFF
 function initBot() {
   bot.start((ctx) => ctx.reply('Hello'));
-  // bot.on('new_chat_members', (ctx) => console.log(ctx.message.new_chat_members));
+  // // bot.on('new_chat_members', (ctx) => console.log(ctx.message.new_chat_members));
   bot.on('new_chat_members', (ctx) => welcome(ctx.message.new_chat_members));
+  // bot.on('left_chat_participant', (ctx) => store(ctx.message));
 	bot.command('update', (ctx) => getDischarge());
   bot.launch();
 }
@@ -38,9 +40,9 @@ function welcome(people) {
 }
 
 function writeWelcome(name) {
-  msg = "Hallo " + name;
+  msg = "Wilkomme " + name;
   msg += "\n";
-  msg += "Immer mit de Maserig!";
+  msg += "Denk dra: Immer mit de Maserig!";
   sendNews(msg);
   sendZIsForZurfing();
   //All right, look. First of all, with the grain. With the grain. You see what I'm doing here? You let the tool do the work, you see? Just like you're riding the wave, you let the wave do the work. You don't fight the wave. You can't fight these big waves.
@@ -240,6 +242,10 @@ function testMessage() {
 function storeLog() {
   // console.dir(JSON.stringify(log));
   fs.writeFileSync("BigZlog.json", JSON.stringify(log));
+}
+
+function store(file){
+  fs.writeFileSync("file.json", JSON.stringify(file));
 }
 
 // function sendImage(){
