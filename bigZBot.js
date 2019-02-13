@@ -1,10 +1,11 @@
-var minimumValue = 70;
+var minimumValue = 80;
 var repeatingtimePumping = 0.5;
 var daysToLookAhead = 2;
 var repeatingtimeForecast = 1;
 var updateTime = 30; //in minutes
-var now = new Date();
+var days = ['Sunntig', 'Mäntig', 'Ziistig', 'Mittwuch', 'Dunstig', 'Fritig', 'Samstig'];
 
+var now = new Date();
 
 const getCSV = require('get-csv');
 const fs = require('fs');
@@ -31,7 +32,9 @@ function initBot() {
   // // bot.on('new_chat_members', (ctx) => console.log(ctx.message.new_chat_members));
   bot.on('new_chat_members', (ctx) => welcome(ctx.message.new_chat_members));
   // bot.on('left_chat_participant', (ctx) => store(ctx.message));
-	bot.command('update', (ctx) => getDischarge());
+	bot.command('update', (ctx) => update());
+	bot.command('forecast', (ctx) => forceForecast());
+	bot.command('status', (ctx) => forceStatus());
   bot.launch();
 }
 
@@ -52,6 +55,57 @@ function writeWelcome(name) {
 
 function sendZIsForZurfing() {
   telegram.sendPhoto(chatId, 'https://i.ytimg.com/vi/toCRvSihvIo/maxresdefault.jpg');
+}
+
+// --------------------------------------------------------
+// FORCE FUNCTIONS
+// --------------------------------------------------------
+
+function forceStatus() {
+  getCSV('https://www.hydrodaten.admin.ch/graphs/2018/discharge_2018.csv')
+    .then(rows => forceStatusNow(rows));
+}
+
+function forceStatusNow(rows){
+  var last = rows[rows.length - 1];
+  getTemperature();
+  setTimeout(function() {
+    msg = "*Status*:";
+    msg += "\n";
+    msg += "*" + Math.round(last.Discharge) + "* m³/s";
+    msg += "\n";
+    msg += "*" + oneDecimal(temperature) + "* °C";
+    sendNews(msg);
+  }, 500);
+}
+
+function forceForecast() {
+    var url = 'https://www.hydrodaten.admin.ch/graphs/2018/deterministic_forecasts_2018.json';
+
+    request({
+      url: url,
+      json: true
+    }, function(error, response, body) {
+
+      if (!error && response.statusCode === 200) {
+        forceForecastNow(body.forecastData.cosmoSeven); // handle the json response
+      }
+    })
+}
+
+
+function forceForecastNow(cosmoSeven) {
+  var niceForecast = null;
+
+  msg = "*Forecast*:";
+
+  //looping through forecast data
+  for (var i = 0; i < cosmoSeven.length; i++) {
+    var thisDate = new Date(cosmoSeven[i].datetime);
+    msg += "\n";
+    msg += days[thisDate.getDay()] + " " + ('0'+thisDate.getHours()).slice(-2) + ":00 – *" + Math.round(cosmoSeven[i].value) + "*m³/s";
+  }
+  sendNews(msg);
 }
 
 // --------------------------------------------------------
@@ -95,7 +149,7 @@ function store(file){
 // LIVE STATUS FUNCTIONS
 // --------------------------------------------------------
 
-function getDischarge() {
+function update() {
   getCSV('https://www.hydrodaten.admin.ch/graphs/2018/discharge_2018.csv')
     .then(rows => setDischarge(rows));
 }
@@ -110,7 +164,7 @@ function checkDischarge() {
   console.log('Reuss is currently at: ' + last.Discharge + ' m³/s');
 
   //new
-  if (last.Discharge > minimumValue && false) {
+  if (last.Discharge > minimumValue) {
     console.log("it's on!");
     if (lastMessage() == "pumping"){
       var lastPumpMessage = new Date(log.lastPumpMessage);
@@ -223,15 +277,10 @@ function testMessage() {
 }
 
 function writeForecast(forecastData) {
-  var days = ['Sunntig', 'Mäntig', 'Ziistig', 'Mittwuch', 'Dunstig', 'Fritig', 'Samstig'];
 
-  msg = "*On hold!*"
-  msg += "\n";
-  msg += "🤙";
+  msg = "*On hold! 🤙*"
   msg += "\n";
   msg += "Am " + days[forecastData.datetime.getDay()] + ", " + forecastData.datetime.getHours() + ":00 sölls *" + Math.round(forecastData.value) + "*m³/s ha.";
-  msg += "\n";
-  msg += "Stay tuned! 🤙";
   msg += "\n";
   msg += "[View Forecast](https://www.hydrodaten.admin.ch/de/2018.html)";
   sendNews(msg);
@@ -242,23 +291,21 @@ function writeForecast(forecastData) {
   log.lastMessage = "forecast";
 
   //old
-  log.forecast.last = now;
-  log.forecast.data = forecastData;
-  log.last = now;
+  // log.forecast.last = now;
+  // log.forecast.data = forecastData;
+  // log.last = now;
   storeLog();
 }
 
 function writeON(data) {
-  date = data.Datetime;
-  dis = data.Discharge;
 
   msg = "*Bremgarte Lauft!*";
   msg += "\n";
   msg += "🏄🏄‍♀️🏄🏄‍♀️🏄";
   msg += "\n";
-  msg += "Wasserstand: *" + Math.round(dis) + "*m³/s";
+  msg += "Wasserstand: *" + Math.round(data.Discharge) + "*m³/s";
   msg += "\n";
-  msg += "Wassertemperatur: *" + Math.round(temperature) + "*°C";
+  msg += "Wassertemperatur: *" + oneDecimal(temperature) + "*°C";
   msg += "\n";
   msg += "[View Forecast](https://www.hydrodaten.admin.ch/de/2018.html)";
   sendNews(msg);
@@ -268,34 +315,29 @@ function writeON(data) {
   log.lastPumpMessage = now;
 
   //old
-  log.pumping.last = now;
-  log.pumping.data = data;
-  log.last = now;
+  // log.pumping.last = now;
+  // log.pumping.data = data;
+  // log.last = now;
   storeLog();
 }
 
 function writeStillON(data) {
-  date = data.Datetime;
-  dis = data.Discharge;
 
-  msg = "*Still On!*";
+  msg = "*Still On! 🏄🏄‍♀️*";
   msg += "\n";
-  msg += "🏄🏄‍♀️🏄🏄‍♀️🏄";
-  msg += "\n";
-  msg += "Wasserstand: *" + Math.round(dis) + "*m³/s";
-  msg += "\n";
-  msg += "Wassertemperatur: *" + Math.round(temperature) + "*°C";
+  msg += "*" + Math.round(data.Discharge) + "*m³/s & *" + oneDecimal(temperature) + "*°C";
   msg += "\n";
   msg += "[View Forecast](https://www.hydrodaten.admin.ch/de/2018.html)";
   sendNews(msg);
 
   //new
+  log.lastMessage = "pumping";
   log.lastPumpMessage = now;
 
   //old
-  log.pumping.last = now;
-  log.pumping.data = data;
-  log.last = now;
+  // log.pumping.last = now;
+  // log.pumping.data = data;
+  // log.last = now;
   storeLog();
 }
 
@@ -303,11 +345,7 @@ function writeOff(dis) {
 
   msg = "*Off...*";
   msg += "\n";
-  msg += "👎👎👎";
-  msg += "\n";
-  msg += "Wasserstand: *" + Math.round(dis) + "*m³/s";
-  msg += "\n";
-  msg += "Müend nümm gah.. Ziit zum Ukulele spiele!";
+  msg += Math.round(dis) + "*m³/s 👎👎👎";
   msg += "\n";
   msg += "[View Forecast](https://www.hydrodaten.admin.ch/de/2018.html)";
   sendNews(msg);
@@ -316,14 +354,14 @@ function writeOff(dis) {
   log.lastMessage = "off";
 
   //old
-  log.lastDischarge = dis;
-  log.pumping.last = now.removeDays(repeatingtimePumping);
-  log.last = now;
+  // log.lastDischarge = dis;
+  // log.pumping.last = now.removeDays(repeatingtimePumping);
+  // log.last = now;
   storeLog();
 }
 
 function writeNothingInSight(){
-  msg = "*Sorry.. Bremgarte wird nöd laufe in nöchster Ziit👎*";
+  msg = "*Sorry, kei Swell meh in Sicht. 👎";
   msg += "\n";
   msg += "[View Forecast](https://www.hydrodaten.admin.ch/de/2018.html)";
   sendNews(msg);
@@ -335,7 +373,7 @@ function writeNothingInSight(){
   //old
   // log.lastDischarge = dis;
   // log.pumping.last = now.removeDays(repeatingtimePumping);
-  log.last = now;
+  // log.last = now;
   storeLog();
 }
 
@@ -356,8 +394,8 @@ function sendNews(txt) {
 
 function start() {
   initBot();
-  getDischarge();
-  setInterval(getDischarge, updateTime * 1000 * 60);
+  update();
+  setInterval(update, updateTime * 1000 * 60);
 }
 
 start();
