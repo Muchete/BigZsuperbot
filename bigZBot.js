@@ -17,13 +17,15 @@ const Telegraf = require('telegraf');
 const bot = new Telegraf(token);
 const Telegram = require('telegraf/telegram');
 const telegram = new Telegram(token);
-var chatId = '-311093887'; //big z newsletter
-// var chatId = '569435436'; //muchete
+// var chatId = '-311093887'; //big z newsletter
+var chatId = '569435436'; //muchete
 
 var discharge;
 var temperature;
 
-//BOT STUFF
+// --------------------------------------------------------
+// BOT STUFF
+// --------------------------------------------------------
 function initBot() {
   bot.start((ctx) => ctx.reply('Hello'));
   // // bot.on('new_chat_members', (ctx) => console.log(ctx.message.new_chat_members));
@@ -52,103 +54,11 @@ function sendZIsForZurfing() {
   telegram.sendPhoto(chatId, 'https://i.ytimg.com/vi/toCRvSihvIo/maxresdefault.jpg');
 }
 
-
-//Load file
-function getDischarge() {
-  getCSV('https://www.hydrodaten.admin.ch/graphs/2018/discharge_2018.csv')
-    .then(rows => setDischarge(rows));
-}
-
-function setDischarge(d) {
-  discharge = d;
-  checkDischarge();
-}
-
-function checkDischarge() {
-  var last = discharge[discharge.length - 1];
-  console.log('Reuss is currently at: ' + last.Discharge + ' m³/s');
-
-  if (last.Discharge > minimumValue) {
-    // if (last.Discharge > 1000) {
-    console.log("it's on!");
-    var lastPump = new Date(log.pumping.last);
-
-    //if its still pumping and no Pump-message has been sent in the last [0.5] days
-    if (lastPump.addDays(repeatingtimePumping) < now) {
-      getTemperature();
-      setTimeout(function() {
-        writeAlert(last);
-      }, 500);
-    } else {
-      console.log('already wrote pumping too often');
-    }
-
-  } else if (last.Discharge <= minimumValue && log.lastDischarge > minimumValue) {
-    // if it was pumping last time:
-    writeOff(last.Discharge);
-  } else {
-    console.log('too low... - Checking forecast:');
-
-
-    var lastForecast = new Date(log.forecast.last);
-    if (lastForecast.addDays(repeatingtimeForecast) < now) {
-      getForecast();
-    } else {
-      console.log('already wrote forecast too often');
-    }
-
-  }
-  log.lastDischarge = last.Discharge;
-}
-
-function getTemperature() {
-  getCSV('https://www.hydrodaten.admin.ch/graphs/2018/temperature_2018.csv')
-    .then(rows => setTemperature(rows));
-}
-
-function setTemperature(t) {
-  temperature = t[t.length - 1].Temperature;
-}
-
-function getForecast() {
-  var url = 'https://www.hydrodaten.admin.ch/graphs/2018/deterministic_forecasts_2018.json';
-
-  request({
-    url: url,
-    json: true
-  }, function(error, response, body) {
-
-    if (!error && response.statusCode === 200) {
-      checkForecast(body) // Print the json response
-    }
-  })
-}
-
-function checkForecast(data) {
-  data = data.forecastData.cosmoSeven;
-  var firstVal = null;
-
-  // first = new Date(data[0].datetime);
-  // console.log(Date.parse(first));
-
-  for (var i = 0; i < data.length; i++) {
-    var thisDate = new Date(data[i].datetime);
-    // if not in past and not more than 3 days ahead:
-    if (thisDate > now && now.addDays(daysToLookAhead) > thisDate) {
-      //if it's on
-      if (!firstVal && data[i].value > minimumValue) {
-        firstVal = {};
-        firstVal.datetime = thisDate;
-        firstVal.value = data[i].value;
-      }
-    }
-  }
-  if (firstVal) {
-    console.log("Will be on!");
-    writeForecast(firstVal);
-  } else {
-    console.log("Nothing in the next days...");
-  }
+// --------------------------------------------------------
+// Load STUFF / Other Functions
+// --------------------------------------------------------
+function lastMessage(){
+  return log.lastMessage;
 }
 
 Date.prototype.addDays = function(days) {
@@ -168,27 +78,177 @@ Date.prototype.removeDays = function(days) {
 //    return this;
 // }
 
-function writeForecast(firstVal) {
+function oneDecimal(n){
+  return Math.round(n*10)/10;
+}
+
+function storeLog() {
+  // console.dir(JSON.stringify(log));
+  fs.writeFileSync("BigZlog.json", JSON.stringify(log));
+}
+
+function store(file){
+  fs.writeFileSync("file.json", JSON.stringify(file));
+}
+
+// --------------------------------------------------------
+// LIVE STATUS FUNCTIONS
+// --------------------------------------------------------
+
+function getDischarge() {
+  getCSV('https://www.hydrodaten.admin.ch/graphs/2018/discharge_2018.csv')
+    .then(rows => setDischarge(rows));
+}
+
+function setDischarge(d) {
+  discharge = d;
+  checkDischarge();
+}
+
+function checkDischarge() {
+  var last = discharge[discharge.length - 1];
+  console.log('Reuss is currently at: ' + last.Discharge + ' m³/s');
+
+  //new
+  if (last.Discharge > minimumValue && false) {
+    console.log("it's on!");
+    if (lastMessage() == "pumping"){
+      var lastPumpMessage = new Date(log.lastPumpMessage);
+      if (lastPumpMessage.addDays(repeatingtimePumping) < now) {
+        //if hasn't sent message in a while, write that it is still on!
+        console.log("Time for a pump reminder message");
+        getTemperature();
+        setTimeout(function() {
+          writeStillON(last);
+        }, 500);
+      } else {
+        console.log("Not yet time for a pump reminder message");
+      }
+    } else {
+      getTemperature();
+      //wait for temperature to be loaded...
+      setTimeout(function() {
+        writeON(last);
+      }, 500);
+    }
+  } else {
+    if (lastMessage() == "pumping"){
+      // if was pumping before, write off message
+      console.log("Not pumping anymore... Sending message now");
+      writeOff(last.Discharge);
+      log.lastForecastMessage = new Date(1999); //dummy year to reset the last forecast time
+    }
+
+    console.log('too low... - Checking forecast:');
+    //will be on in a few days?
+    getForecast();
+  }
+}
+
+function getTemperature() {
+  getCSV('https://www.hydrodaten.admin.ch/graphs/2018/temperature_2018.csv')
+    .then(rows => setTemperature(rows));
+}
+
+function setTemperature(t) {
+  temperature = t[t.length - 1].Temperature;
+}
+
+// --------------------------------------------------------
+// FORECAST FUNCTIONS
+// --------------------------------------------------------
+
+function getForecast(){
+  var url = 'https://www.hydrodaten.admin.ch/graphs/2018/deterministic_forecasts_2018.json';
+
+  request({
+    url: url,
+    json: true
+  }, function(error, response, body) {
+
+    if (!error && response.statusCode === 200) {
+      checkForecast(body.forecastData.cosmoSeven); // handle the json response
+    }
+  })
+}
+
+function checkForecast(cosmoSeven) {
+  var niceForecast = null;
+
+  //sorting forecast data
+  for (var i = 0; i < cosmoSeven.length; i++) {
+    var thisDate = new Date(cosmoSeven[i].datetime);
+    // if not in past and not more than 3 days ahead:
+    if (thisDate > now && now.addDays(daysToLookAhead) > thisDate) {
+      //if it's on
+      if (!niceForecast && cosmoSeven[i].value > minimumValue) {
+        niceForecast = {};
+        niceForecast.datetime = thisDate;
+        niceForecast.value = cosmoSeven[i].value;
+      }
+    }
+  }
+
+  //evaluating forecast data
+  if (niceForecast) {
+    console.log("Will be on!");
+
+    var lastForecastMessage = new Date(log.lastForecastMessage);
+
+    if (lastForecastMessage.addDays(repeatingtimeForecast) < now || log.lastMessage != "forecast") {
+      writeForecast(niceForecast);
+      console.log("Sent Forecast");
+    } else {
+      console.log("Too early to send another forecast");
+    }
+
+  } else {
+    console.log("Nothing in the next days...");
+
+    var nextForecast = new Date(log.nextForecast);
+    //if forecast was made that is not on anymore:
+    if (nextForecast > now) {
+      console.log("Will not be on anymore");
+      writeNothingInSight();
+    }
+  }
+}
+
+// --------------------------------------------------------
+// Send messages
+// --------------------------------------------------------
+
+function testMessage() {
+  telegram.sendMessage(chatId, 'Hello World!');
+}
+
+function writeForecast(forecastData) {
   var days = ['Sunntig', 'Mäntig', 'Ziistig', 'Mittwuch', 'Dunstig', 'Fritig', 'Samstig'];
 
   msg = "*On hold!*"
   msg += "\n";
   msg += "🤙";
   msg += "\n";
-  msg += "Am " + days[firstVal.datetime.getDay()] + ", " + firstVal.datetime.getHours() + ":00 sölls *" + Math.round(firstVal.value) + "*m³/s ha.";
+  msg += "Am " + days[forecastData.datetime.getDay()] + ", " + forecastData.datetime.getHours() + ":00 sölls *" + Math.round(forecastData.value) + "*m³/s ha.";
   msg += "\n";
   msg += "Stay tuned! 🤙";
   msg += "\n";
   msg += "[View Forecast](https://www.hydrodaten.admin.ch/de/2018.html)";
   sendNews(msg);
 
+  //new
+  log.lastForecastMessage = now;
+  log.nextForecast = forecastData.datetime;
+  log.lastMessage = "forecast";
+
+  //old
   log.forecast.last = now;
-  log.forecast.data = firstVal;
+  log.forecast.data = forecastData;
   log.last = now;
   storeLog();
 }
 
-function writeAlert(data) {
+function writeON(data) {
   date = data.Datetime;
   dis = data.Discharge;
 
@@ -203,6 +263,36 @@ function writeAlert(data) {
   msg += "[View Forecast](https://www.hydrodaten.admin.ch/de/2018.html)";
   sendNews(msg);
 
+  //new
+  log.lastMessage = "pumping";
+  log.lastPumpMessage = now;
+
+  //old
+  log.pumping.last = now;
+  log.pumping.data = data;
+  log.last = now;
+  storeLog();
+}
+
+function writeStillON(data) {
+  date = data.Datetime;
+  dis = data.Discharge;
+
+  msg = "*Still On!*";
+  msg += "\n";
+  msg += "🏄🏄‍♀️🏄🏄‍♀️🏄";
+  msg += "\n";
+  msg += "Wasserstand: *" + Math.round(dis) + "*m³/s";
+  msg += "\n";
+  msg += "Wassertemperatur: *" + Math.round(temperature) + "*°C";
+  msg += "\n";
+  msg += "[View Forecast](https://www.hydrodaten.admin.ch/de/2018.html)";
+  sendNews(msg);
+
+  //new
+  log.lastPumpMessage = now;
+
+  //old
   log.pumping.last = now;
   log.pumping.data = data;
   log.last = now;
@@ -222,8 +312,29 @@ function writeOff(dis) {
   msg += "[View Forecast](https://www.hydrodaten.admin.ch/de/2018.html)";
   sendNews(msg);
 
+  //new
+  log.lastMessage = "off";
+
+  //old
   log.lastDischarge = dis;
   log.pumping.last = now.removeDays(repeatingtimePumping);
+  log.last = now;
+  storeLog();
+}
+
+function writeNothingInSight(){
+  msg = "*Sorry.. Bremgarte wird nöd laufe in nöchster Ziit👎*";
+  msg += "\n";
+  msg += "[View Forecast](https://www.hydrodaten.admin.ch/de/2018.html)";
+  sendNews(msg);
+
+  //new
+  log.nextForecast = new Date(1999);
+  log.lastMessage = "off";
+
+  //old
+  // log.lastDischarge = dis;
+  // log.pumping.last = now.removeDays(repeatingtimePumping);
   log.last = now;
   storeLog();
 }
@@ -235,22 +346,13 @@ function sendNews(txt) {
   });
 }
 
-function testMessage() {
-  telegram.sendMessage(chatId, 'Hello World!');
-}
-
-function storeLog() {
-  // console.dir(JSON.stringify(log));
-  fs.writeFileSync("BigZlog.json", JSON.stringify(log));
-}
-
-function store(file){
-  fs.writeFileSync("file.json", JSON.stringify(file));
-}
-
 // function sendImage(){
 // 	telegram.sendPhoto(chatId, 'https://static1.squarespace.com/static/54fc8146e4b02a22841f4df7/59510970b6ac5081d70c82c1/59510a04e4fcb533d1d699e7/1498483206213/13246243_1005206202889430_7912208575068447048_o.jpg');
 // }
+
+// --------------------------------------------------------
+// MAIN FUNCTION
+// --------------------------------------------------------
 
 function start() {
   initBot();
