@@ -1,9 +1,11 @@
 var minimumValue = 80;
+var maximumValue = 400;
 var repeatingtimePumping = 0.5;
 var daysToLookAhead = 2;
 var repeatingtimeForecast = 1;
 var updateTime = 30; //in minutes
-var days = ['Sunntig', 'Mäntig', 'Ziistig', 'Mittwuch', 'Dunstig', 'Fritig', 'Samstig'];
+var days = ['So', 'Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa'];
+var symbols = ['❌','✅','☠️'];
 
 var now = new Date();
 
@@ -19,7 +21,7 @@ const bot = new Telegraf(token);
 const Telegram = require('telegraf/telegram');
 const telegram = new Telegram(token);
 // var chatId = '-311093887'; //big z newsletter
-var chatId = '569435436'; //muchete
+var chatId = '569435436'; //@muchete
 
 var discharge;
 var temperature;
@@ -70,7 +72,7 @@ function forceStatusNow(rows){
   var last = rows[rows.length - 1];
   getTemperature();
   setTimeout(function() {
-    msg = "*Status*:";
+    msg = "*Status*: " + getSymbol(last.Discharge);
     msg += "\n";
     msg += "*" + Math.round(last.Discharge) + "* m³/s";
     msg += "\n";
@@ -97,13 +99,16 @@ function forceForecast() {
 function forceForecastNow(cosmoSeven) {
   var niceForecast = null;
 
+  // msg = "🕐 *Forecast*:";
   msg = "*Forecast*:";
 
   //looping through forecast data
   for (var i = 0; i < cosmoSeven.length; i++) {
     var thisDate = new Date(cosmoSeven[i].datetime);
     msg += "\n";
-    msg += days[thisDate.getDay()] + " " + ('0'+thisDate.getHours()).slice(-2) + ":00 – *" + Math.round(cosmoSeven[i].value) + "*m³/s";
+    // msg += days[thisDate.getDay()] + " " + ('0'+thisDate.getHours()).slice(-2) + ":00 – *" + Math.round(cosmoSeven[i].value) + "*m³/s";
+    msg += getSymbol(cosmoSeven[i].value)+ " " + days[thisDate.getDay()] + " " + ('0'+thisDate.getHours()).slice(-2) + ":00 – *" + Math.round(cosmoSeven[i].value) + "* m³/s";
+    // msg += getSymbol(cosmoSeven[i].value) + " *" + Math.round(cosmoSeven[i].value) + "* m³/s – " + days[thisDate.getDay()] + ", " + ('0'+thisDate.getHours()).slice(-2) + ":00";
   }
   sendNews(msg);
 }
@@ -111,6 +116,16 @@ function forceForecastNow(cosmoSeven) {
 // --------------------------------------------------------
 // Load STUFF / Other Functions
 // --------------------------------------------------------
+function getSymbol(val){
+  if (val > maximumValue){
+    return symbols[2];
+  } else if (val > minimumValue) {
+    return symbols[1];
+  } else {
+    return symbols[0];
+  }
+}
+
 function lastMessage(){
   return log.lastMessage;
 }
@@ -150,6 +165,9 @@ function store(file){
 // --------------------------------------------------------
 
 function update() {
+  console.log("--------");
+  console.log("Running Update Function");
+  console.log("\n");
   getCSV('https://www.hydrodaten.admin.ch/graphs/2018/discharge_2018.csv')
     .then(rows => setDischarge(rows));
 }
@@ -266,6 +284,9 @@ function checkForecast(cosmoSeven) {
       writeNothingInSight();
     }
   }
+  console.log("\n");
+  console.log("End of Update");
+  console.log("--------");
 }
 
 // --------------------------------------------------------
