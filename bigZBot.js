@@ -5,7 +5,7 @@ var daysToLookAhead = 2;
 var repeatingtimeForecast = 1;
 var updateTime = 30; //in minutes
 var days = ['So', 'Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa'];
-var symbols = ['❌','✅','☠️'];
+var symbols = ['❌', '✅', '☠️'];
 
 var now = new Date();
 
@@ -20,8 +20,10 @@ const Telegraf = require('telegraf');
 const bot = new Telegraf(token);
 const Telegram = require('telegraf/telegram');
 const telegram = new Telegram(token);
-// var chatId = '-311093887'; //big z newsletter
-var chatId = '569435436'; //@muchete
+const Extra = require('telegraf/extra')
+const Markup = require('telegraf/markup')
+var newsletterChatId = '-311093887'; //big z newsletter
+// var newsletterChatId = '569435436'; //@muchete
 
 var discharge;
 var temperature;
@@ -30,14 +32,40 @@ var temperature;
 // BOT STUFF
 // --------------------------------------------------------
 function initBot() {
-  bot.start((ctx) => ctx.reply('Hello'));
-  // // bot.on('new_chat_members', (ctx) => console.log(ctx.message.new_chat_members));
-  bot.on('new_chat_members', (ctx) => welcome(ctx.message.new_chat_members));
-  // bot.on('left_chat_participant', (ctx) => store(ctx.message));
-	bot.command('update', (ctx) => update());
-	bot.command('forecast', (ctx) => forceForecast());
-	bot.command('status', (ctx) => forceStatus());
-  bot.launch();
+  const keyboard = Markup.inlineKeyboard([
+    Markup.callbackButton('Gah Weg', 'delete'),
+    Markup.callbackButton('Status', 'status'),
+    Markup.callbackButton('Forecast', 'forecast')
+  ], {
+    // columns: 2
+  })
+
+  bot.telegram.getMe().then((botInfo) => {
+    bot.options.username = botInfo.username
+  })
+
+  bot.start((ctx) => ctx.reply('Hallo '+ctx.from.first_name+'\nNeed /help?'))
+  bot.help((ctx) => ctx.reply('Wenn min Name (Big Z) erwähnsch chumi zur Hilf!\nOder du frögsch direkt mit eim vo dene Befehl: \n- /status\n- /forecast'))
+
+  //GROUP CHAT STUFF
+  bot.on('new_chat_members', (ctx) => welcome(ctx.message.new_chat_members))
+  bot.on('left_chat_member', (ctx) => ctx.reply("Wiiter so "+ctx.message.left_chat_member.first_name+", eine weniger uf de Welle!"));
+
+  //AUTO ANSWER STUFF
+  bot.hears(/big z/i, (ctx) => ctx.reply('Wie chani helfe?', Extra.markup(keyboard)))
+  // bot.on('message', (ctx) => ctx.reply('Wie chani der helfe?', Extra.markup(keyboard)))
+
+  //FUNKTIONE
+  bot.action('delete', ({
+    deleteMessage
+  }) => deleteMessage())
+  bot.action('forecast', (ctx) => sendForecast(ctx.chat.id))
+  bot.action('status', (ctx) => sendStatus(ctx.chat.id))
+  bot.command('forecast', (ctx) => sendForecast(ctx.chat.id))
+  bot.command('status', (ctx) => sendStatus(ctx.chat.id))
+  bot.command('update', (ctx) => update())
+  bot.command('log', (ctx) => console.log(ctx.from.first_name))
+  bot.launch()
 }
 
 function welcome(people) {
@@ -55,20 +83,42 @@ function writeWelcome(name) {
   //All right, look. First of all, with the grain. With the grain. You see what I'm doing here? You let the tool do the work, you see? Just like you're riding the wave, you let the wave do the work. You don't fight the wave. You can't fight these big waves.
 }
 
+function hate(name){
+
+}
+
 function sendZIsForZurfing() {
-  telegram.sendPhoto(chatId, 'https://i.ytimg.com/vi/toCRvSihvIo/maxresdefault.jpg');
+  telegram.sendPhoto(newsletterChatId, 'https://i.ytimg.com/vi/toCRvSihvIo/maxresdefault.jpg');
 }
 
 // --------------------------------------------------------
 // FORCE FUNCTIONS
 // --------------------------------------------------------
 
-function forceStatus() {
+// function forceStatus() {
+//   getCSV('https://www.hydrodaten.admin.ch/graphs/2018/discharge_2018.csv')
+//     .then(rows => forceStatusNow(rows));
+// }
+//
+// function forceStatusNow(rows) {
+//   var last = rows[rows.length - 1];
+//   getTemperature();
+//   setTimeout(function() {
+//     msg = "*Status*: " + getSymbol(last.Discharge);
+//     msg += "\n";
+//     msg += "*" + Math.round(last.Discharge) + "* m³/s";
+//     msg += "\n";
+//     msg += "*" + oneDecimal(temperature) + "* °C";
+//     sendNews(msg);
+//   }, 500);
+// }
+
+function sendStatus(chat_id) {
   getCSV('https://www.hydrodaten.admin.ch/graphs/2018/discharge_2018.csv')
-    .then(rows => forceStatusNow(rows));
+    .then(rows => sendStatusNow(chat_id, rows));
 }
 
-function forceStatusNow(rows){
+function sendStatusNow(chat_id, rows) {
   var last = rows[rows.length - 1];
   getTemperature();
   setTimeout(function() {
@@ -77,26 +127,26 @@ function forceStatusNow(rows){
     msg += "*" + Math.round(last.Discharge) + "* m³/s";
     msg += "\n";
     msg += "*" + oneDecimal(temperature) + "* °C";
-    sendNews(msg);
+    sendTo(chat_id, msg);
   }, 500);
 }
 
-function forceForecast() {
-    var url = 'https://www.hydrodaten.admin.ch/graphs/2018/deterministic_forecasts_2018.json';
+function sendForecast(chat_id) {
+  var url = 'https://www.hydrodaten.admin.ch/graphs/2018/deterministic_forecasts_2018.json';
 
-    request({
-      url: url,
-      json: true
-    }, function(error, response, body) {
+  request({
+    url: url,
+    json: true
+  }, function(error, response, body) {
 
-      if (!error && response.statusCode === 200) {
-        forceForecastNow(body.forecastData.cosmoSeven); // handle the json response
-      }
-    })
+    if (!error && response.statusCode === 200) {
+      sendForecastNow(chat_id, body.forecastData.cosmoSeven); // handle the json response
+    }
+  })
 }
 
 
-function forceForecastNow(cosmoSeven) {
+function sendForecastNow(chat_id, cosmoSeven) {
   var niceForecast = null;
 
   // msg = "🕐 *Forecast*:";
@@ -107,17 +157,17 @@ function forceForecastNow(cosmoSeven) {
     var thisDate = new Date(cosmoSeven[i].datetime);
     msg += "\n";
     // msg += days[thisDate.getDay()] + " " + ('0'+thisDate.getHours()).slice(-2) + ":00 – *" + Math.round(cosmoSeven[i].value) + "*m³/s";
-    msg += getSymbol(cosmoSeven[i].value)+ " " + days[thisDate.getDay()] + " " + ('0'+thisDate.getHours()).slice(-2) + ":00 – *" + Math.round(cosmoSeven[i].value) + "* m³/s";
+    msg += getSymbol(cosmoSeven[i].value) + " " + days[thisDate.getDay()] + " " + ('0' + thisDate.getHours()).slice(-2) + ":00 – *" + Math.round(cosmoSeven[i].value) + "* m³/s";
     // msg += getSymbol(cosmoSeven[i].value) + " *" + Math.round(cosmoSeven[i].value) + "* m³/s – " + days[thisDate.getDay()] + ", " + ('0'+thisDate.getHours()).slice(-2) + ":00";
   }
-  sendNews(msg);
+  sendTo(chat_id, msg);
 }
 
 // --------------------------------------------------------
 // Load STUFF / Other Functions
 // --------------------------------------------------------
-function getSymbol(val){
-  if (val > maximumValue){
+function getSymbol(val) {
+  if (val > maximumValue) {
     return symbols[2];
   } else if (val > minimumValue) {
     return symbols[1];
@@ -126,7 +176,7 @@ function getSymbol(val){
   }
 }
 
-function lastMessage(){
+function lastMessage() {
   return log.lastMessage;
 }
 
@@ -147,8 +197,8 @@ Date.prototype.removeDays = function(days) {
 //    return this;
 // }
 
-function oneDecimal(n){
-  return Math.round(n*10)/10;
+function oneDecimal(n) {
+  return Math.round(n * 10) / 10;
 }
 
 function storeLog() {
@@ -156,7 +206,7 @@ function storeLog() {
   fs.writeFileSync("BigZlog.json", JSON.stringify(log));
 }
 
-function store(file){
+function store(file) {
   fs.writeFileSync("file.json", JSON.stringify(file));
 }
 
@@ -184,7 +234,7 @@ function checkDischarge() {
   //new
   if (last.Discharge > minimumValue) {
     console.log("it's on!");
-    if (lastMessage() == "pumping"){
+    if (lastMessage() == "pumping") {
       var lastPumpMessage = new Date(log.lastPumpMessage);
       if (lastPumpMessage.addDays(repeatingtimePumping) < now) {
         //if hasn't sent message in a while, write that it is still on!
@@ -204,7 +254,7 @@ function checkDischarge() {
       }, 500);
     }
   } else {
-    if (lastMessage() == "pumping"){
+    if (lastMessage() == "pumping") {
       // if was pumping before, write off message
       console.log("Not pumping anymore... Sending message now");
       writeOff(last.Discharge);
@@ -230,7 +280,7 @@ function setTemperature(t) {
 // FORECAST FUNCTIONS
 // --------------------------------------------------------
 
-function getForecast(){
+function getForecast() {
   var url = 'https://www.hydrodaten.admin.ch/graphs/2018/deterministic_forecasts_2018.json';
 
   request({
@@ -294,7 +344,7 @@ function checkForecast(cosmoSeven) {
 // --------------------------------------------------------
 
 function testMessage() {
-  telegram.sendMessage(chatId, 'Hello World!');
+  telegram.sendMessage(newsletterChatId, 'Hello World!');
 }
 
 function writeForecast(forecastData) {
@@ -381,7 +431,7 @@ function writeOff(dis) {
   storeLog();
 }
 
-function writeNothingInSight(){
+function writeNothingInSight() {
   msg = "*Sorry, kei Swell meh in Sicht. 👎";
   msg += "\n";
   msg += "[View Forecast](https://www.hydrodaten.admin.ch/de/2018.html)";
@@ -399,14 +449,22 @@ function writeNothingInSight(){
 }
 
 function sendNews(txt) {
-  // telegram.sendPhoto(chatId, 'https://static1.squarespace.com/static/54fc8146e4b02a22841f4df7/59510970b6ac5081d70c82c1/59510a04e4fcb533d1d699e7/1498483206213/13246243_1005206202889430_7912208575068447048_o.jpg');
-  telegram.sendMessage(chatId, txt, {
+  // telegram.sendPhoto(newsletterChatId, 'https://static1.squarespace.com/static/54fc8146e4b02a22841f4df7/59510970b6ac5081d70c82c1/59510a04e4fcb533d1d699e7/1498483206213/13246243_1005206202889430_7912208575068447048_o.jpg');
+  telegram.sendMessage(newsletterChatId, txt, {
+    parse_mode: 'markdown'
+  });
+}
+
+function sendTo(to, txt) {
+  // telegram.sendPhoto(newsletterChatId, 'https://static1.squarespace.com/static/54fc8146e4b02a22841f4df7/59510970b6ac5081d70c82c1/59510a04e4fcb533d1d699e7/1498483206213/13246243_1005206202889430_7912208575068447048_o.jpg');
+
+  telegram.sendMessage(to, txt, {
     parse_mode: 'markdown'
   });
 }
 
 // function sendImage(){
-// 	telegram.sendPhoto(chatId, 'https://static1.squarespace.com/static/54fc8146e4b02a22841f4df7/59510970b6ac5081d70c82c1/59510a04e4fcb533d1d699e7/1498483206213/13246243_1005206202889430_7912208575068447048_o.jpg');
+// 	telegram.sendPhoto(newsletterChatId, 'https://static1.squarespace.com/static/54fc8146e4b02a22841f4df7/59510970b6ac5081d70c82c1/59510a04e4fcb533d1d699e7/1498483206213/13246243_1005206202889430_7912208575068447048_o.jpg');
 // }
 
 // --------------------------------------------------------
