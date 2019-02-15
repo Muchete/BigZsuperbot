@@ -1,4 +1,4 @@
-var minimumValue = 80;
+var minimumValue = 100;
 var maximumValue = 400;
 var repeatingtimePumping = 0.5;
 var daysToLookAhead = 2;
@@ -22,8 +22,8 @@ const Telegram = require('telegraf/telegram');
 const telegram = new Telegram(token);
 const Extra = require('telegraf/extra')
 const Markup = require('telegraf/markup')
-var newsletterChatId = '-311093887'; //big z newsletter
-// var newsletterChatId = '569435436'; //@muchete
+// var newsletterChatId = '-311093887'; //big z newsletter
+var newsletterChatId = '569435436'; //@muchete
 
 var discharge;
 var temperature;
@@ -81,10 +81,6 @@ function writeWelcome(name) {
   sendNews(msg);
   sendZIsForZurfing();
   //All right, look. First of all, with the grain. With the grain. You see what I'm doing here? You let the tool do the work, you see? Just like you're riding the wave, you let the wave do the work. You don't fight the wave. You can't fight these big waves.
-}
-
-function hate(name){
-
 }
 
 function sendZIsForZurfing() {
@@ -253,6 +249,9 @@ function checkDischarge() {
         writeON(last);
       }, 500);
     }
+    console.log("\n");
+    console.log("End of Update");
+    console.log("--------");
   } else {
     if (lastMessage() == "pumping") {
       // if was pumping before, write off message
