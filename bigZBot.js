@@ -91,24 +91,6 @@ function sendZIsForZurfing() {
 // FORCE FUNCTIONS
 // --------------------------------------------------------
 
-// function forceStatus() {
-//   getCSV('https://www.hydrodaten.admin.ch/graphs/2018/discharge_2018.csv')
-//     .then(rows => forceStatusNow(rows));
-// }
-//
-// function forceStatusNow(rows) {
-//   var last = rows[rows.length - 1];
-//   getTemperature();
-//   setTimeout(function() {
-//     msg = "*Status*: " + getSymbol(last.Discharge);
-//     msg += "\n";
-//     msg += "*" + Math.round(last.Discharge) + "* m³/s";
-//     msg += "\n";
-//     msg += "*" + oneDecimal(temperature) + "* °C";
-//     sendNews(msg);
-//   }, 500);
-// }
-
 function sendStatus(chat_id) {
   getCSV('https://www.hydrodaten.admin.ch/graphs/2018/discharge_2018.csv')
     .then(rows => sendStatusNow(chat_id, rows));
@@ -225,9 +207,10 @@ function setDischarge(d) {
 
 function checkDischarge() {
   var last = discharge[discharge.length - 1];
+  last.Discharge = parseFloat(last.Discharge);
   console.log('Reuss is currently at: ' + last.Discharge + ' m³/s');
 
-  //new
+  //checking current status
   if (last.Discharge > minimumValue) {
     console.log("it's on!");
     if (lastMessage() == "pumping") {
@@ -299,6 +282,7 @@ function checkForecast(cosmoSeven) {
   //sorting forecast data
   for (var i = 0; i < cosmoSeven.length; i++) {
     var thisDate = new Date(cosmoSeven[i].datetime);
+    cosmoSeven[i].value = parseFloat(cosmoSeven[i].value);
     // if not in past and not more than 3 days ahead:
     if (thisDate > now && now.addDays(daysToLookAhead) > thisDate) {
       //if it's on
