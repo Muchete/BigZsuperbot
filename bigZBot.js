@@ -246,7 +246,7 @@ function checkDischarge() {
 
     console.log('too low... - Checking forecast:');
     //will be on in a few days?
-    
+
       getForecast();
   }
 }
@@ -379,7 +379,7 @@ function writeON(data) {
 
 function writeStillON(data) {
 
-  msg = "*Still On! 🏄🏄‍♀️*";
+  msg = "*Still On!* 🏄🏄‍♀️";
   msg += "\n";
   msg += "*" + Math.round(data.Discharge) + "*m³/s & *" + oneDecimal(temperature) + "*°C";
   msg += "\n";
@@ -417,7 +417,7 @@ function writeOff(dis) {
 }
 
 function writeNothingInSight() {
-  msg = "*Sorry, kei Swell meh in Sicht. 👎";
+  msg = "*Sorry, kei Swell meh in Sicht.* 👎";
   msg += "\n";
   msg += "[View Forecast](https://www.hydrodaten.admin.ch/de/2018.html)";
   sendNews(msg);
