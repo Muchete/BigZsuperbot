@@ -1,11 +1,12 @@
 var minimumValue = 100;
 var maximumValue = 400;
-var repeatingtimePumping = 0.1;
+var repeatingtimePumping = 0.3;
 var daysToLookAhead = 2;
 var repeatingtimeForecast = 1;
 var updateTime = 30; //in minutes
 var days = ['So', 'Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa'];
 var symbols = ['❌', '🏄', '☠️'];
+var msg;
 
 var now = new Date();
 
@@ -245,11 +246,8 @@ function checkDischarge() {
 
     console.log('too low... - Checking forecast:');
     //will be on in a few days?
-    setTimeout(function() {
-      //wait for off message to be sent
-	  console.log("Going for the Forecast");
+    
       getForecast();
-    }, 2000);
   }
 }
 
@@ -403,7 +401,7 @@ function writeOff(dis) {
 
   msg = "*Off...*";
   msg += "\n";
-  msg += Math.round(dis) + "*m³/s 👎👎👎";
+  msg += "*" + Math.round(dis) + "*m³/s 👎👎👎";
   msg += "\n";
   msg += "[View Forecast](https://www.hydrodaten.admin.ch/de/2018.html)";
   sendNews(msg);
