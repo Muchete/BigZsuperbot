@@ -247,8 +247,9 @@ function checkDischarge() {
     //will be on in a few days?
     setTimeout(function() {
       //wait for off message to be sent
+	  console.log("Going for the Forecast");
       getForecast();
-    }, 500);
+    }, 2000);
   }
 }
 
@@ -289,7 +290,7 @@ function checkForecast(cosmoSeven) {
     // if not in past and not more than 3 days ahead:
     if (thisDate > now && now.addDays(daysToLookAhead) > thisDate) {
       //if it's on
-      if (!niceForecast && cosmoSeven[i].value > minimumValue) {
+      if (!niceForecast && cosmoSeven[i].value > minimumValue+80) {
         niceForecast = {};
         niceForecast.datetime = thisDate;
         niceForecast.value = cosmoSeven[i].value;
