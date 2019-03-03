@@ -1,11 +1,11 @@
 var minimumValue = 100;
 var maximumValue = 400;
-var repeatingtimePumping = 0.5;
+var repeatingtimePumping = 0.1;
 var daysToLookAhead = 2;
 var repeatingtimeForecast = 1;
 var updateTime = 30; //in minutes
 var days = ['So', 'Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa'];
-var symbols = ['❌', '✅', '☠️'];
+var symbols = ['❌', '🏄', '☠️'];
 
 var now = new Date();
 
@@ -245,7 +245,10 @@ function checkDischarge() {
 
     console.log('too low... - Checking forecast:');
     //will be on in a few days?
-    getForecast();
+    setTimeout(function() {
+      //wait for off message to be sent
+      getForecast();
+    }, 500);
   }
 }
 
