@@ -1,5 +1,5 @@
-var minimumValue = 100;
-var maximumValue = 400;
+var minimumValue = 150;
+var maximumValue = 390;
 var repeatingtimePumping = 0.3;
 var daysToLookAhead = 2;
 var repeatingtimeForecast = 1;
@@ -212,7 +212,7 @@ function checkDischarge() {
   console.log('Reuss is currently at: ' + last.Discharge + ' m³/s');
 
   //checking current status
-  if (last.Discharge > minimumValue) {
+  if (last.Discharge > Math.round(minimumValue)) {
     console.log("it's on!");
     if (lastMessage() == "pumping") {
       var lastPumpMessage = new Date(log.lastPumpMessage);
