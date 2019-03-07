@@ -1,6 +1,6 @@
 var minimumValue = 150;
 var maximumValue = 390;
-var repeatingtimePumping = 0.3;
+var repeatingtimePumping = 0.5;
 var daysToLookAhead = 2;
 var repeatingtimeForecast = 1;
 var updateTime = 30; //in minutes
@@ -45,12 +45,12 @@ function initBot() {
     bot.options.username = botInfo.username
   })
 
-  bot.start((ctx) => ctx.reply('Hallo '+ctx.from.first_name+'\nNeed /help?'))
+  bot.start((ctx) => ctx.reply('Hallo ' + ctx.from.first_name + '\nNeed /help?'))
   bot.help((ctx) => ctx.reply('Wenn min Name (Big Z) erwähnsch chumi zur Hilf!\nOder du frögsch direkt mit eim vo dene Befehl: \n- /status\n- /forecast'))
 
   //GROUP CHAT STUFF
   bot.on('new_chat_members', (ctx) => welcome(ctx.message.new_chat_members))
-  bot.on('left_chat_member', (ctx) => ctx.reply("Wiiter so "+ctx.message.left_chat_member.first_name+", eine weniger uf de Welle!"));
+  bot.on('left_chat_member', (ctx) => ctx.reply("Wiiter so " + ctx.message.left_chat_member.first_name + ", eine weniger uf de Welle!"));
 
   //AUTO ANSWER STUFF
   bot.hears(/big z/i, (ctx) => ctx.reply('Wie chani helfe?', Extra.markup(keyboard)))
@@ -65,6 +65,8 @@ function initBot() {
   bot.command('forecast', (ctx) => sendForecast(ctx.chat.id))
   bot.command('status', (ctx) => sendStatus(ctx.chat.id))
   bot.command('update', (ctx) => update())
+  bot.command('barrel', (ctx) => sendBarrelVideo(ctx.chat.id))
+  bot.command('zwasple', (ctx) => zwasple(ctx))
   bot.command('log', (ctx) => console.log(ctx.from.first_name))
   bot.launch()
 }
@@ -222,6 +224,7 @@ function checkDischarge() {
         getTemperature();
         setTimeout(function() {
           writeStillON(last);
+          sendReminderVideo();
         }, 500);
       } else {
         console.log("Not yet time for a pump reminder message");
@@ -247,7 +250,7 @@ function checkDischarge() {
     console.log('too low... - Checking forecast:');
     //will be on in a few days?
 
-      getForecast();
+    getForecast();
   }
 }
 
@@ -288,7 +291,7 @@ function checkForecast(cosmoSeven) {
     // if not in past and not more than 3 days ahead:
     if (thisDate > now && now.addDays(daysToLookAhead) > thisDate) {
       //if it's on
-      if (!niceForecast && cosmoSeven[i].value > minimumValue+80) {
+      if (!niceForecast && cosmoSeven[i].value > minimumValue + 80) {
         niceForecast = {};
         niceForecast.datetime = thisDate;
         niceForecast.value = cosmoSeven[i].value;
@@ -448,9 +451,33 @@ function sendTo(to, txt) {
   });
 }
 
+function zwasple(ctx) {
+  var to = ctx.chat.id;
+  // telegram.sendPhoto(newsletterChatId, 'https://static1.squarespace.com/static/54fc8146e4b02a22841f4df7/59510970b6ac5081d70c82c1/59510a04e4fcb533d1d699e7/1498483206213/13246243_1005206202889430_7912208575068447048_o.jpg');
+  txt = ctx.from.first_name + "?";
+  txt = "Need Help, [" + txt + "](https://www.google.com)";
+
+  telegram.sendMessage(to, txt, {
+    parse_mode: 'markdown'
+  });
+
+  txt = null;
+}
+
 // function sendImage(){
 // 	telegram.sendPhoto(newsletterChatId, 'https://static1.squarespace.com/static/54fc8146e4b02a22841f4df7/59510970b6ac5081d70c82c1/59510a04e4fcb533d1d699e7/1498483206213/13246243_1005206202889430_7912208575068447048_o.jpg');
 // }
+
+function sendBarrelVideo(to) {
+  telegram.sendVideo(to, {
+    source: fs.createReadStream('data/z-barrel.m4v')
+  });
+}
+
+function sendReminderVideo(){
+  sendBarrelVideo(newsletterChatId);
+  sendTo(newsletterChatId,"Ier verpassed öpis! Chömed au.");
+}
 
 // --------------------------------------------------------
 // MAIN FUNCTION
