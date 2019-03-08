@@ -1,4 +1,4 @@
-var minimumValue = 150;
+var minimumValue = 180;
 var maximumValue = 390;
 var repeatingtimePumping = 0.5;
 var daysToLookAhead = 2;
