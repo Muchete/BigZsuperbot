@@ -222,9 +222,9 @@ function checkDischarge() {
         //if hasn't sent message in a while, write that it is still on!
         console.log("Time for a pump reminder message");
         getTemperature();
+        sendReminderVideo();
         setTimeout(function() {
           writeStillON(last);
-          sendReminderVideo();
         }, 500);
       } else {
         console.log("Not yet time for a pump reminder message");
