@@ -1,4 +1,4 @@
-var minimumValue = 180;
+var minimumValue = 185;
 var maximumValue = 390;
 var repeatingtimePumping = 0.5;
 var daysToLookAhead = 2;
@@ -23,8 +23,8 @@ const Telegram = require('telegraf/telegram');
 const telegram = new Telegram(token);
 const Extra = require('telegraf/extra')
 const Markup = require('telegraf/markup')
-// var newsletterChatId = '-311093887'; //big z newsletter
-var newsletterChatId = '569435436'; //@muchete
+var newsletterChatId = '-311093887'; //big z newsletter
+// var newsletterChatId = '569435436'; //@muchete
 
 var discharge;
 var temperature;
