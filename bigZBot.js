@@ -457,7 +457,7 @@ function zwasple(ctx) {
   var to = ctx.chat.id;
   // telegram.sendPhoto(newsletterChatId, 'https://static1.squarespace.com/static/54fc8146e4b02a22841f4df7/59510970b6ac5081d70c82c1/59510a04e4fcb533d1d699e7/1498483206213/13246243_1005206202889430_7912208575068447048_o.jpg');
   txt = ctx.from.first_name + "?";
-  txt = "Need Help, [" + txt + "](https://www.google.com/search?q=Jennifer+Anniston+images&tbm=isch&source=univ&sa=X&ved=2ahUKEwjHva_53e_gAhWlyaYKHa7QADYQsAR6BAgFEAE&biw=1680&bih=916)";
+  txt = "Need Help, [" + txt + "](https://www.google.ch/search?q=Jennifer+Aniston&source=lnms&tbm=isch&sa=X&ved=0ahUKEwiZhd7r2fLhAhVAwcQBHdzaA_oQ_AUIDigB&biw=1680&bih=916&dpr=2)";
 
   telegram.sendMessage(to, txt, {
     parse_mode: 'markdown'
