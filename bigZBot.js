@@ -1,11 +1,12 @@
-var minimumValue = 185;
+var minimumValue = 210;
+var minimumValueOff = minimumValue - 10; //value that he doesn't instantly change from on to off
 var maximumValue = 390;
 var repeatingtimePumping = 0.5;
 var daysToLookAhead = 2;
 var repeatingtimeForecast = 1;
 var updateTime = 30; //in minutes
 var days = ['So', 'Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa'];
-var symbols = ['❌', '🏄', '☠️'];
+var symbols = ['✕', '🏄', '☠️'];
 var msg;
 
 var now = new Date();
@@ -53,7 +54,8 @@ function initBot() {
   bot.on('left_chat_member', (ctx) => ctx.reply("Wiiter so " + ctx.message.left_chat_member.first_name + ", eine weniger uf de Welle!"));
 
   //AUTO ANSWER STUFF
-  bot.hears(/big z/i, (ctx) => ctx.reply('Wie chani helfe?', Extra.markup(keyboard)))
+  bot.hears(/big z/i, (ctx) => ctx.reply('Wie chani helfe?', Extra.markup(keyboard)));
+  bot.hears(/Z/, (ctx) => ctx.reply('Wie chani helfe?', Extra.markup(keyboard)));
   // bot.on('message', (ctx) => ctx.reply('Wie chani der helfe?', Extra.markup(keyboard)))
 
   //FUNKTIONE
@@ -239,7 +241,7 @@ function checkDischarge() {
     console.log("\n");
     console.log("End of Update");
     console.log("--------");
-  } else {
+  } else if (last.Discharge <= Math.round(minimumValueOff)) {
     if (lastMessage() == "pumping") {
       // if was pumping before, write off message
       console.log("Not pumping anymore... Sending message now");
