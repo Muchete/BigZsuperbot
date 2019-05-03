@@ -33,8 +33,8 @@ const Scene = require('telegraf/scenes/base')
 const Extra = require('telegraf/extra')
 const Markup = require('telegraf/markup')
 const { enter, leave } = Stage
-// var newsletterChatId = '-311093887'; //big z newsletter
-var newsletterChatId = '569435436'; //@muchete
+var newsletterChatId = '-311093887'; //big z newsletter
+// var newsletterChatId = '569435436'; //@muchete
 
 var discharge;
 var temperature;
