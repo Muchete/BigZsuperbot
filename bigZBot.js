@@ -1,6 +1,6 @@
-var minimumValue = 210;
-var minimumValueOff = minimumValue - 10; //value that he doesn't instantly change from on to off
-var maximumValue = 390;
+var minimumValue;
+var minimumValueOff; //value that he doesn't instantly change from on to off
+var maximumValue = 400;
 var repeatingtimePumping = 0.5;
 var daysToLookAhead = 2;
 var repeatingtimeForecast = 1;
@@ -9,12 +9,17 @@ var days = ['So', 'Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa'];
 var symbols = ['✕', '🏄', '☠️'];
 var msg;
 
+//Scene vars
+let kb;
+let tempNumber;
+
 var now = new Date();
 
 const getCSV = require('get-csv');
 const fs = require('fs');
 const request = require("request");
 var log = JSON.parse(fs.readFileSync('BigZlog.json', 'utf8'));
+
 var token = String(fs.readFileSync('token.txt', 'utf8'));
 token = token.slice(0, -1);
 
@@ -22,10 +27,14 @@ const Telegraf = require('telegraf');
 const bot = new Telegraf(token);
 const Telegram = require('telegraf/telegram');
 const telegram = new Telegram(token);
+const Session = require('telegraf/session')
+const Stage = require('telegraf/stage')
+const Scene = require('telegraf/scenes/base')
 const Extra = require('telegraf/extra')
 const Markup = require('telegraf/markup')
-var newsletterChatId = '-311093887'; //big z newsletter
-// var newsletterChatId = '569435436'; //@muchete
+const { enter, leave } = Stage
+// var newsletterChatId = '-311093887'; //big z newsletter
+var newsletterChatId = '569435436'; //@muchete
 
 var discharge;
 var temperature;
@@ -34,7 +43,10 @@ var temperature;
 // BOT STUFF
 // --------------------------------------------------------
 function initBot() {
-  const keyboard = Markup.inlineKeyboard([
+  //Set Values
+  calcDischargeValue();
+
+  var keyboard = Markup.inlineKeyboard([
     Markup.callbackButton('Gah Weg', 'delete'),
     Markup.callbackButton('Status', 'status'),
     Markup.callbackButton('Forecast', 'forecast')
@@ -70,6 +82,12 @@ function initBot() {
   bot.command('barrel', (ctx) => sendBarrelVideo(ctx.chat.id))
   bot.command('zwasple', (ctx) => zwasple(ctx))
   bot.command('log', (ctx) => console.log(ctx.from.first_name))
+
+  //SCENE THINGS (used to set value)
+  bot.use(Session())
+  bot.use(stage.middleware())
+  bot.command('set', enter('set'))
+
   bot.launch()
 }
 
@@ -90,6 +108,58 @@ function writeWelcome(name) {
 
 function sendZIsForZurfing() {
   telegram.sendPhoto(newsletterChatId, 'https://i.ytimg.com/vi/toCRvSihvIo/maxresdefault.jpg');
+}
+
+// --------------------------------------------------------
+// SCENE FUNCTIONS - SET VALUE
+// --------------------------------------------------------
+
+const setScene = new Scene('set')
+setScene.enter((ctx) => ctx.reply('Hallo. Ab wieviel m³/s sölli eu bscheid geh? Im Moment isch es ' + log.dischargeValue + 'm³/s.\nDruck /Abbruch, falls nüt ändere wotsch.'))
+setScene.leave((ctx) => ctx.reply('Ok, tschüss. Es isch jetzt uf ' + log.dischargeValue + 'm³/s.'))
+setScene.command('Abbruch', leave())
+setScene.on('text', (ctx) => ctx.reply(handleText(ctx), Extra.markup(kb)))
+const stage = new Stage([setScene], { ttl: 10 })
+
+function handleText(ctx){
+  let txt = ctx.message.text;
+  let re = new RegExp('\\d{2,3}', 'i');
+  let num = txt.match(re);
+  let text;
+
+  kb = Markup.keyboard([
+    Markup.callbackButton('Ja'),
+    Markup.callbackButton('Nei')
+  ], {
+    // columns: 2
+  })
+
+  let emptyKeyboard = Markup.removeKeyboard(true);
+
+  if( txt == 'Ja' && tempNumber){
+    kb = emptyKeyboard;
+    setVal(ctx);
+    text = 'Has mer gmerkt. 👍🏾';
+    tempNumber = false;
+  } else if (txt == 'Nei' && tempNumber){
+    kb = emptyKeyboard;
+    text = 'Ok, nächst Versuech. Ab wieviel m³/s sölli eu bscheid geh?';
+  } else if (num) {
+    tempNumber = num[0];
+    text = 'Stimmt ' + tempNumber + 'm³/s ?';
+  } else {
+    tempNumber = false;
+    kb = false; //override keyboard
+    text = 'Sorry, das hani nöd verstande. Ab wieviel m³/s sölli eu Bscheid geh?'
+  }
+
+  return text;
+
+  function setVal(ctx){
+    console.log('Setting dischargeValue to: '+tempNumber);
+    setDischargeValue(tempNumber);
+    ctx.scene.leave();
+  }
 }
 
 // --------------------------------------------------------
@@ -149,6 +219,18 @@ function sendForecastNow(chat_id, cosmoSeven) {
 // --------------------------------------------------------
 // Load STUFF / Other Functions
 // --------------------------------------------------------
+function calcDischargeValue(){
+  minimumValue = log.dischargeValue;
+  minimumValueOff = minimumValue - 10; //value that he doesn't instantly change from on to off
+}
+
+function setDischargeValue(v){
+  log.dischargeValue = v;
+  minimumValue = log.dischargeValue;
+  minimumValueOff = minimumValue - 10; //value that he doesn't instantly change from on to off
+  storeLog();
+}
+
 function getSymbol(val) {
   if (val > maximumValue) {
     return symbols[2];
