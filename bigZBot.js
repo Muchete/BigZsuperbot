@@ -5,8 +5,8 @@ var repeatingtimePumping = 0.5;
 var daysToLookAhead = 2;
 var repeatingtimeForecast = 1;
 var updateTime = 30; //in minutes
-var days = ['So', 'Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa'];
-var symbols = ['✕', '🏄', '☠️'];
+var days = ["So", "Mo", "Di", "Mi", "Do", "Fr", "Sa"];
+var symbols = ["✕", "🏄", "☠️"];
 var msg;
 
 //Scene vars
@@ -15,25 +15,25 @@ let tempNumber;
 
 var now = new Date();
 
-const getCSV = require('get-csv');
-const fs = require('fs');
+const getCSV = require("get-csv");
+const fs = require("fs");
 const request = require("request");
-var log = JSON.parse(fs.readFileSync('BigZlog.json', 'utf8'));
+var log = JSON.parse(fs.readFileSync("BigZlog.json", "utf8"));
 
-var token = String(fs.readFileSync('token.txt', 'utf8'));
+var token = String(fs.readFileSync("token.txt", "utf8"));
 token = token.slice(0, -1);
 
-const Telegraf = require('telegraf');
+const Telegraf = require("telegraf");
 const bot = new Telegraf(token);
-const Telegram = require('telegraf/telegram');
+const Telegram = require("telegraf/telegram");
 const telegram = new Telegram(token);
-const Session = require('telegraf/session')
-const Stage = require('telegraf/stage')
-const Scene = require('telegraf/scenes/base')
-const Extra = require('telegraf/extra')
-const Markup = require('telegraf/markup')
-const { enter, leave } = Stage
-var newsletterChatId = '-311093887'; //big z newsletter
+const Session = require("telegraf/session");
+const Stage = require("telegraf/stage");
+const Scene = require("telegraf/scenes/base");
+const Extra = require("telegraf/extra");
+const Markup = require("telegraf/markup");
+const { enter, leave } = Stage;
+var newsletterChatId = "-311093887"; //big z newsletter
 // var newsletterChatId = '569435436'; //@muchete
 
 var discharge;
@@ -45,50 +45,64 @@ var temperature;
 function initBot() {
   //Set Values
   calcDischargeValue();
+  now = new Date();
 
-  var keyboard = Markup.inlineKeyboard([
-    Markup.callbackButton('Gah Weg', 'delete'),
-    Markup.callbackButton('Status', 'status'),
-    Markup.callbackButton('Forecast', 'forecast')
-  ], {
-    // columns: 2
-  })
+  var keyboard = Markup.inlineKeyboard(
+    [
+      Markup.callbackButton("Gah Weg", "delete"),
+      Markup.callbackButton("Status", "status"),
+      Markup.callbackButton("Forecast", "forecast")
+    ],
+    {
+      // columns: 2
+    }
+  );
 
-  bot.telegram.getMe().then((botInfo) => {
-    bot.options.username = botInfo.username
-  })
+  bot.telegram.getMe().then(botInfo => {
+    bot.options.username = botInfo.username;
+  });
 
-  bot.start((ctx) => ctx.reply('Hallo ' + ctx.from.first_name + '\nNeed /help?'))
-  bot.help((ctx) => ctx.reply('Wenn min Name (Big Z) erwähnsch chumi zur Hilf!\nOder du frögsch direkt mit eim vo dene Befehl: \n- /status\n- /forecast'))
+  bot.start(ctx => ctx.reply("Hallo " + ctx.from.first_name + "\nNeed /help?"));
+  bot.help(ctx =>
+    ctx.reply(
+      "Wenn min Name (Big Z) erwähnsch chumi zur Hilf!\nOder du frögsch direkt mit eim vo dene Befehl: \n- /status\n- /forecast"
+    )
+  );
 
   //GROUP CHAT STUFF
-  bot.on('new_chat_members', (ctx) => welcome(ctx.message.new_chat_members))
-  bot.on('left_chat_member', (ctx) => ctx.reply("Wiiter so " + ctx.message.left_chat_member.first_name + ", eine weniger uf de Welle!"));
+  bot.on("new_chat_members", ctx => welcome(ctx.message.new_chat_members));
+  bot.on("left_chat_member", ctx =>
+    ctx.reply(
+      "Wiiter so " +
+        ctx.message.left_chat_member.first_name +
+        ", eine weniger uf de Welle!"
+    )
+  );
 
   //AUTO ANSWER STUFF
-  bot.hears(/big z/i, (ctx) => ctx.reply('Wie chani helfe?', Extra.markup(keyboard)));
-  bot.hears(/Z/, (ctx) => ctx.reply('Wie chani helfe?', Extra.markup(keyboard)));
+  bot.hears(/big z/i, ctx =>
+    ctx.reply("Wie chani helfe?", Extra.markup(keyboard))
+  );
+  bot.hears(/Z/, ctx => ctx.reply("Wie chani helfe?", Extra.markup(keyboard)));
   // bot.on('message', (ctx) => ctx.reply('Wie chani der helfe?', Extra.markup(keyboard)))
 
   //FUNKTIONE
-  bot.action('delete', ({
-    deleteMessage
-  }) => deleteMessage())
-  bot.action('forecast', (ctx) => sendForecast(ctx.chat.id))
-  bot.action('status', (ctx) => sendStatus(ctx.chat.id))
-  bot.command('forecast', (ctx) => sendForecast(ctx.chat.id))
-  bot.command('status', (ctx) => sendStatus(ctx.chat.id))
-  bot.command('update', (ctx) => update())
-  bot.command('barrel', (ctx) => sendBarrelVideo(ctx.chat.id))
-  bot.command('zwasple', (ctx) => zwasple(ctx))
-  bot.command('log', (ctx) => console.log(ctx.from.first_name))
+  bot.action("delete", ({ deleteMessage }) => deleteMessage());
+  bot.action("forecast", ctx => sendForecast(ctx.chat.id));
+  bot.action("status", ctx => sendStatus(ctx.chat.id));
+  bot.command("forecast", ctx => sendForecast(ctx.chat.id));
+  bot.command("status", ctx => sendStatus(ctx.chat.id));
+  bot.command("update", ctx => update());
+  bot.command("barrel", ctx => sendBarrelVideo(ctx.chat.id));
+  bot.command("zwasple", ctx => zwasple(ctx));
+  bot.command("log", ctx => console.log(ctx.from.first_name));
 
   //SCENE THINGS (used to set value)
-  bot.use(Session())
-  bot.use(stage.middleware())
-  bot.command('set', enter('set'))
+  bot.use(Session());
+  bot.use(stage.middleware());
+  bot.command("set", enter("set"));
 
-  bot.launch()
+  bot.launch();
 }
 
 function welcome(people) {
@@ -107,56 +121,68 @@ function writeWelcome(name) {
 }
 
 function sendZIsForZurfing() {
-  telegram.sendPhoto(newsletterChatId, 'https://i.ytimg.com/vi/toCRvSihvIo/maxresdefault.jpg');
+  telegram.sendPhoto(
+    newsletterChatId,
+    "https://i.ytimg.com/vi/toCRvSihvIo/maxresdefault.jpg"
+  );
 }
 
 // --------------------------------------------------------
 // SCENE FUNCTIONS - SET VALUE
 // --------------------------------------------------------
 
-const setScene = new Scene('set')
-setScene.enter((ctx) => ctx.reply('Hallo. Ab wieviel m³/s sölli eu bscheid geh? Im Moment isch es ' + log.dischargeValue + 'm³/s.\nDruck /Abbruch, falls nüt ändere wotsch.'))
-setScene.leave((ctx) => ctx.reply('Ok, tschüss. Es isch jetzt uf ' + log.dischargeValue + 'm³/s.'))
-setScene.command('Abbruch', leave())
-setScene.on('text', (ctx) => ctx.reply(handleText(ctx), Extra.markup(kb)))
-const stage = new Stage([setScene], { ttl: 10 })
+const setScene = new Scene("set");
+setScene.enter(ctx =>
+  ctx.reply(
+    "Hallo. Ab wieviel m³/s sölli eu bscheid geh? Im Moment isch es " +
+      log.dischargeValue +
+      "m³/s.\nDruck /Abbruch, falls nüt ändere wotsch."
+  )
+);
+setScene.leave(ctx =>
+  ctx.reply("Ok, tschüss. Es isch jetzt uf " + log.dischargeValue + "m³/s.")
+);
+setScene.command("Abbruch", leave());
+setScene.on("text", ctx => ctx.reply(handleText(ctx), Extra.markup(kb)));
+const stage = new Stage([setScene], { ttl: 10 });
 
-function handleText(ctx){
+function handleText(ctx) {
   let txt = ctx.message.text;
-  let re = new RegExp('\\d{2,3}', 'i');
+  let re = new RegExp("\\d{2,3}", "i");
   let num = txt.match(re);
   let text;
 
-  kb = Markup.keyboard([
-    Markup.callbackButton('Ja'),
-    Markup.callbackButton('Nei')
-  ], {
-    // columns: 2
-  })
+  kb = Markup.keyboard(
+    [Markup.callbackButton("Ja"), Markup.callbackButton("Nei")],
+    {
+      // columns: 2
+    }
+  );
 
   let emptyKeyboard = Markup.removeKeyboard(true);
 
-  if( txt == 'Ja' && tempNumber){
+  if (txt == "Ja" && tempNumber) {
     kb = emptyKeyboard;
     setVal(ctx);
-    text = 'Has mer gmerkt. 👍🏾';
+    text = "Has mer gmerkt. 👍🏾";
     tempNumber = false;
-  } else if (txt == 'Nei' && tempNumber){
+  } else if (txt == "Nei" && tempNumber) {
     kb = emptyKeyboard;
-    text = 'Ok, nächst Versuech. Ab wieviel m³/s sölli eu bscheid geh?';
+    text = "Ok, nächst Versuech. Ab wieviel m³/s sölli eu bscheid geh?";
   } else if (num) {
     tempNumber = num[0];
-    text = 'Stimmt ' + tempNumber + 'm³/s ?';
+    text = "Stimmt " + tempNumber + "m³/s ?";
   } else {
     tempNumber = false;
     kb = false; //override keyboard
-    text = 'Sorry, das hani nöd verstande. Ab wieviel m³/s sölli eu Bscheid geh?'
+    text =
+      "Sorry, das hani nöd verstande. Ab wieviel m³/s sölli eu Bscheid geh?";
   }
 
   return text;
 
-  function setVal(ctx){
-    console.log('Setting dischargeValue to: '+tempNumber);
+  function setVal(ctx) {
+    console.log("Setting dischargeValue to: " + tempNumber);
     setDischargeValue(tempNumber);
     ctx.scene.leave();
   }
@@ -167,8 +193,9 @@ function handleText(ctx){
 // --------------------------------------------------------
 
 function sendStatus(chat_id) {
-  getCSV('https://www.hydrodaten.admin.ch/graphs/2018/discharge_2018.csv')
-    .then(rows => sendStatusNow(chat_id, rows));
+  getCSV("https://www.hydrodaten.admin.ch/graphs/2018/discharge_2018.csv").then(
+    rows => sendStatusNow(chat_id, rows)
+  );
 }
 
 function sendStatusNow(chat_id, rows) {
@@ -185,19 +212,21 @@ function sendStatusNow(chat_id, rows) {
 }
 
 function sendForecast(chat_id) {
-  var url = 'https://www.hydrodaten.admin.ch/graphs/2018/deterministic_forecasts_2018.json';
+  var url =
+    "https://www.hydrodaten.admin.ch/graphs/2018/deterministic_forecasts_2018.json";
 
-  request({
-    url: url,
-    json: true
-  }, function(error, response, body) {
-
-    if (!error && response.statusCode === 200) {
-      sendForecastNow(chat_id, body.forecastData.cosmoSeven); // handle the json response
+  request(
+    {
+      url: url,
+      json: true
+    },
+    function(error, response, body) {
+      if (!error && response.statusCode === 200) {
+        sendForecastNow(chat_id, body.forecastData.cosmoSeven); // handle the json response
+      }
     }
-  })
+  );
 }
-
 
 function sendForecastNow(chat_id, cosmoSeven) {
   var niceForecast = null;
@@ -210,7 +239,15 @@ function sendForecastNow(chat_id, cosmoSeven) {
     var thisDate = new Date(cosmoSeven[i].datetime);
     msg += "\n";
     // msg += days[thisDate.getDay()] + " " + ('0'+thisDate.getHours()).slice(-2) + ":00 – *" + Math.round(cosmoSeven[i].value) + "*m³/s";
-    msg += getSymbol(cosmoSeven[i].value) + " " + days[thisDate.getDay()] + " " + ('0' + thisDate.getHours()).slice(-2) + ":00 – *" + Math.round(cosmoSeven[i].value) + "* m³/s";
+    msg +=
+      getSymbol(cosmoSeven[i].value) +
+      " " +
+      days[thisDate.getDay()] +
+      " " +
+      ("0" + thisDate.getHours()).slice(-2) +
+      ":00 – *" +
+      Math.round(cosmoSeven[i].value) +
+      "* m³/s";
     // msg += getSymbol(cosmoSeven[i].value) + " *" + Math.round(cosmoSeven[i].value) + "* m³/s – " + days[thisDate.getDay()] + ", " + ('0'+thisDate.getHours()).slice(-2) + ":00";
   }
   sendTo(chat_id, msg);
@@ -219,12 +256,12 @@ function sendForecastNow(chat_id, cosmoSeven) {
 // --------------------------------------------------------
 // Load STUFF / Other Functions
 // --------------------------------------------------------
-function calcDischargeValue(){
+function calcDischargeValue() {
   minimumValue = log.dischargeValue;
   minimumValueOff = minimumValue - 10; //value that he doesn't instantly change from on to off
 }
 
-function setDischargeValue(v){
+function setDischargeValue(v) {
   log.dischargeValue = v;
   minimumValue = log.dischargeValue;
   minimumValueOff = minimumValue - 10; //value that he doesn't instantly change from on to off
@@ -249,13 +286,13 @@ Date.prototype.addDays = function(days) {
   var date = new Date(this.valueOf());
   date.setDate(date.getDate() + days);
   return date;
-}
+};
 
 Date.prototype.removeDays = function(days) {
   var date = new Date(this.valueOf());
   date.setDate(date.getDate() - days);
   return date;
-}
+};
 
 // Date.prototype.addHours = function(h) {
 //    this.setTime(this.getTime() + (h*60*60*1000));
@@ -280,11 +317,13 @@ function store(file) {
 // --------------------------------------------------------
 
 function update() {
+  now = new Date();
   console.log("--------");
   console.log("Running Update Function");
   console.log("\n");
-  getCSV('https://www.hydrodaten.admin.ch/graphs/2018/discharge_2018.csv')
-    .then(rows => setDischarge(rows));
+  getCSV("https://www.hydrodaten.admin.ch/graphs/2018/discharge_2018.csv").then(
+    rows => setDischarge(rows)
+  );
 }
 
 function setDischarge(d) {
@@ -293,9 +332,10 @@ function setDischarge(d) {
 }
 
 function checkDischarge() {
+  now = new Date();
   var last = discharge[discharge.length - 1];
   last.Discharge = parseFloat(last.Discharge);
-  console.log('Reuss is currently at: ' + last.Discharge + ' m³/s');
+  console.log("Reuss is currently at: " + last.Discharge + " m³/s");
 
   //checking current status
   if (last.Discharge > Math.round(minimumValue)) {
@@ -331,7 +371,7 @@ function checkDischarge() {
       log.lastForecastMessage = new Date(1999); //dummy year to reset the last forecast time
     }
 
-    console.log('too low... - Checking forecast:');
+    console.log("too low... - Checking forecast:");
     //will be on in a few days?
 
     getForecast();
@@ -339,8 +379,9 @@ function checkDischarge() {
 }
 
 function getTemperature() {
-  getCSV('https://www.hydrodaten.admin.ch/graphs/2018/temperature_2018.csv')
-    .then(rows => setTemperature(rows));
+  getCSV(
+    "https://www.hydrodaten.admin.ch/graphs/2018/temperature_2018.csv"
+  ).then(rows => setTemperature(rows));
 }
 
 function setTemperature(t) {
@@ -352,17 +393,20 @@ function setTemperature(t) {
 // --------------------------------------------------------
 
 function getForecast() {
-  var url = 'https://www.hydrodaten.admin.ch/graphs/2018/deterministic_forecasts_2018.json';
+  var url =
+    "https://www.hydrodaten.admin.ch/graphs/2018/deterministic_forecasts_2018.json";
 
-  request({
-    url: url,
-    json: true
-  }, function(error, response, body) {
-
-    if (!error && response.statusCode === 200) {
-      checkForecast(body.forecastData.cosmoSeven); // handle the json response
+  request(
+    {
+      url: url,
+      json: true
+    },
+    function(error, response, body) {
+      if (!error && response.statusCode === 200) {
+        checkForecast(body.forecastData.cosmoSeven); // handle the json response
+      }
     }
-  })
+  );
 }
 
 function checkForecast(cosmoSeven) {
@@ -389,13 +433,15 @@ function checkForecast(cosmoSeven) {
 
     var lastForecastMessage = new Date(log.lastForecastMessage);
 
-    if (lastForecastMessage.addDays(repeatingtimeForecast) < now || log.lastMessage != "forecast") {
+    if (
+      lastForecastMessage.addDays(repeatingtimeForecast) < now ||
+      log.lastMessage != "forecast"
+    ) {
       writeForecast(niceForecast);
       console.log("Sent Forecast");
     } else {
       console.log("Too early to send another forecast");
     }
-
   } else {
     console.log("Nothing in the next days...");
 
@@ -416,14 +462,20 @@ function checkForecast(cosmoSeven) {
 // --------------------------------------------------------
 
 function testMessage() {
-  telegram.sendMessage(newsletterChatId, 'Hello World!');
+  telegram.sendMessage(newsletterChatId, "Hello World!");
 }
 
 function writeForecast(forecastData) {
-
-  msg = "*On hold! 🤙*"
+  msg = "*On hold! 🤙*";
   msg += "\n";
-  msg += "Am " + days[forecastData.datetime.getDay()] + ", " + forecastData.datetime.getHours() + ":00 sölls *" + Math.round(forecastData.value) + "*m³/s ha.";
+  msg +=
+    "Am " +
+    days[forecastData.datetime.getDay()] +
+    ", " +
+    forecastData.datetime.getHours() +
+    ":00 sölls *" +
+    Math.round(forecastData.value) +
+    "*m³/s ha.";
   msg += "\n";
   msg += "[View Forecast](https://www.hydrodaten.admin.ch/de/2018.html)";
   sendNews(msg);
@@ -441,7 +493,6 @@ function writeForecast(forecastData) {
 }
 
 function writeON(data) {
-
   msg = "*Bremgarte Lauft!*";
   msg += "\n";
   msg += "🏄🏄‍♀️🏄🏄‍♀️🏄";
@@ -465,10 +516,14 @@ function writeON(data) {
 }
 
 function writeStillON(data) {
-
   msg = "*Still On!* 🏄🏄‍♀️";
   msg += "\n";
-  msg += "*" + Math.round(data.Discharge) + "*m³/s & *" + oneDecimal(temperature) + "*°C";
+  msg +=
+    "*" +
+    Math.round(data.Discharge) +
+    "*m³/s & *" +
+    oneDecimal(temperature) +
+    "*°C";
   msg += "\n";
   msg += "[View Forecast](https://www.hydrodaten.admin.ch/de/2018.html)";
   sendNews(msg);
@@ -485,7 +540,6 @@ function writeStillON(data) {
 }
 
 function writeOff(dis) {
-
   msg = "*Off...*";
   msg += "\n";
   msg += "*" + Math.round(dis) + "*m³/s 👎👎👎";
@@ -523,7 +577,7 @@ function writeNothingInSight() {
 function sendNews(txt) {
   // telegram.sendPhoto(newsletterChatId, 'https://static1.squarespace.com/static/54fc8146e4b02a22841f4df7/59510970b6ac5081d70c82c1/59510a04e4fcb533d1d699e7/1498483206213/13246243_1005206202889430_7912208575068447048_o.jpg');
   telegram.sendMessage(newsletterChatId, txt, {
-    parse_mode: 'markdown'
+    parse_mode: "markdown"
   });
 }
 
@@ -531,7 +585,7 @@ function sendTo(to, txt) {
   // telegram.sendPhoto(newsletterChatId, 'https://static1.squarespace.com/static/54fc8146e4b02a22841f4df7/59510970b6ac5081d70c82c1/59510a04e4fcb533d1d699e7/1498483206213/13246243_1005206202889430_7912208575068447048_o.jpg');
 
   telegram.sendMessage(to, txt, {
-    parse_mode: 'markdown'
+    parse_mode: "markdown"
   });
 }
 
@@ -539,10 +593,13 @@ function zwasple(ctx) {
   var to = ctx.chat.id;
   // telegram.sendPhoto(newsletterChatId, 'https://static1.squarespace.com/static/54fc8146e4b02a22841f4df7/59510970b6ac5081d70c82c1/59510a04e4fcb533d1d699e7/1498483206213/13246243_1005206202889430_7912208575068447048_o.jpg');
   txt = ctx.from.first_name + "?";
-  txt = "Need Help, [" + txt + "](https://www.google.ch/search?q=Jennifer+Aniston&source=lnms&tbm=isch&sa=X&ved=0ahUKEwiZhd7r2fLhAhVAwcQBHdzaA_oQ_AUIDigB&biw=1680&bih=916&dpr=2)";
+  txt =
+    "Need Help, [" +
+    txt +
+    "](https://www.google.ch/search?q=Jennifer+Aniston&source=lnms&tbm=isch&sa=X&ved=0ahUKEwiZhd7r2fLhAhVAwcQBHdzaA_oQ_AUIDigB&biw=1680&bih=916&dpr=2)";
 
   telegram.sendMessage(to, txt, {
-    parse_mode: 'markdown'
+    parse_mode: "markdown"
   });
 
   txt = null;
@@ -554,13 +611,13 @@ function zwasple(ctx) {
 
 function sendBarrelVideo(to) {
   telegram.sendVideo(to, {
-    source: fs.createReadStream('data/z-barrel.m4v')
+    source: fs.createReadStream("data/z-barrel.m4v")
   });
 }
 
-function sendReminderVideo(){
+function sendReminderVideo() {
   sendBarrelVideo(newsletterChatId);
-  sendTo(newsletterChatId,"Ier verpassed öpis! Chömed au.");
+  sendTo(newsletterChatId, "Ier verpassed öpis! Chömed au.");
 }
 
 // --------------------------------------------------------
